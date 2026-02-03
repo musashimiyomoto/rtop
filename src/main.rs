@@ -1,80 +1,97 @@
-use std::process::Command;
+mod models;
+mod sys;
+mod ui;
+
 use std::thread;
 use std::time::Duration;
 use std::io::{self, Write};
+use std::fmt::Write as FmtWrite;
 
-struct SystemInfo {
-    os_name: String,
-    host_name: String,
-}
+use sys::{get_system_info, get_cpu_load, get_memory_usage, get_disks, get_process_count, get_uptime};
+use ui::{push_bar, C_RESET, C_CYAN, C_GREEN, C_YELLOW, C_MAGENTA, C_BLUE, C_BOLD};
 
-struct DiskInfo {
-    name: String,
-    total_gb: f64,
-    free_gb: f64,
-    percent: u64,
+fn format_uptime(seconds: u64) -> String {
+    let days = seconds / 86400;
+    let hours = (seconds % 86400) / 3600;
+    let minutes = (seconds % 3600) / 60;
+    let secs = seconds % 60;
+
+    if days > 0 {
+        format!("{}d {}h {}m", days, hours, minutes)
+    } else if hours > 0 {
+        format!("{}h {}m {}s", hours, minutes, secs)
+    } else {
+        format!("{}m {}s", minutes, secs)
+    }
 }
 
 fn main() -> io::Result<()> {
-    print!("\x1B[2J");
-    print!("\x1B[?25l");
+    // \x1B[?1049h - Enable alternative screen buffer
+    // \x1B[?25l   - Hide cursor
+    // \x1B[2J     - Clear screen
+    print!("\x1B[?1049h\x1B[?25l\x1B[2J");
     let mut stdout = io::stdout();
 
     let sys_info = get_system_info();
 
+    // We catch the loop to ensure we can restore the terminal if possible, 
+    // though Ctrl+C will still need a proper signal handler for a perfect cleanup.
     loop {
         let cpu_res = get_cpu_load();
         let mem_res = get_memory_usage();
         let disks_res = get_disks();
         let proc_count = get_process_count();
+        let uptime = get_uptime().unwrap_or(0);
 
         let mut buffer = String::new();
         
+        // \x1B[H   - Move cursor to 1,1
+        // \x1B[2J  - Clear entire screen from current position
         buffer.push_str("\x1B[H");
         
-        let c_reset = "\x1B[0m";
-        let c_cyan = "\x1B[36m";
-        let c_green = "\x1B[32m";
-        let c_yellow = "\x1B[33m";
-        let c_magenta = "\x1B[35m";
-        let c_blue = "\x1B[34m";
-        let c_bold = "\x1B[1m";
+        let header_title = "RUST TOP DASHBOARD";
+        let total_width = 63;
+        let padding = (total_width - header_title.len()) / 2;
+        
+        writeln!(buffer, "{}{}╔{}╗{}", C_BOLD, C_CYAN, "═".repeat(total_width + 2), C_RESET).unwrap();
+        writeln!(buffer, "{}{}║ {}{}{} ║{}", C_BOLD, C_CYAN, " ".repeat(padding), header_title, " ".repeat(total_width - header_title.len() - padding), C_RESET).unwrap();
+        writeln!(buffer, "{}{}╚{}╝{}", C_BOLD, C_CYAN, "═".repeat(total_width + 2), C_RESET).unwrap();
 
-        use std::fmt::Write;
-
-        writeln!(buffer, "{}{}=== RUST TOP (MULTI-DISK) ==={}", c_bold, c_cyan, c_reset).unwrap();
-        writeln!(buffer, "Host: {}{}{} | OS: {}{}{}", 
-            c_green, sys_info.host_name, c_reset,
-            c_green, sys_info.os_name, c_reset
+        writeln!(buffer, " Host: {}{:<15}{} | OS: {}{}{} ", 
+            C_GREEN, sys_info.host_name, C_RESET,
+            C_GREEN, sys_info.os_name, C_RESET
         ).unwrap();
-        writeln!(buffer, "Processes: {}{}{}", c_yellow, proc_count.unwrap_or(0), c_reset).unwrap();
-        writeln!(buffer, "{}", "-".repeat(65)).unwrap();
+        writeln!(buffer, " Proc: {}{:<15}{} | Up: {}{}{} ", 
+            C_YELLOW, proc_count.unwrap_or(0), C_RESET,
+            C_GREEN, format_uptime(uptime), C_RESET
+        ).unwrap();
+        writeln!(buffer, "{}", "━".repeat(67)).unwrap();
 
         match cpu_res {
             Ok(load) => {
-                push_bar(&mut buffer, "CPU", load as usize, c_yellow);
+                push_bar(&mut buffer, "CPU", load as usize, C_YELLOW);
             }
             Err(_) => writeln!(buffer, "CPU     : Error").unwrap(),
         }
 
         match mem_res {
             Ok((used, total, percent)) => {
-                push_bar(&mut buffer, "MEM", percent as usize, c_magenta);
+                push_bar(&mut buffer, "MEM", percent as usize, C_MAGENTA);
                 writeln!(buffer, "          {:.2} GB / {:.2} GB", used, total).unwrap();
             }
             Err(_) => writeln!(buffer, "MEM     : Error").unwrap(),
         }
 
-        writeln!(buffer, "{}", "-".repeat(65)).unwrap();
+        writeln!(buffer, "{}", "━".repeat(67)).unwrap();
 
         match disks_res {
             Ok(disks) => {
                 if disks.is_empty() {
-                    writeln!(buffer, "No disks found").unwrap();
+                    writeln!(buffer, " No disks found").unwrap();
                 } else {
                     for disk in disks {
                         let label = format!("DSK {}", disk.name);
-                        push_bar(&mut buffer, &label, disk.percent as usize, c_blue);
+                        push_bar(&mut buffer, &label, disk.percent as usize, C_BLUE);
                         writeln!(buffer, "          {:.2} GB / {:.2} GB", disk.total_gb - disk.free_gb, disk.total_gb).unwrap();
                     }
                 }
@@ -82,140 +99,12 @@ fn main() -> io::Result<()> {
             Err(_) => writeln!(buffer, "DISK    : Error").unwrap(),
         }
 
-        writeln!(buffer, "{}", "-".repeat(65)).unwrap();
-        writeln!(buffer, "Press Ctrl+C to exit.").unwrap();
+        writeln!(buffer, "{}", "━".repeat(67)).unwrap();
+        writeln!(buffer, " Press Ctrl+C to exit.").unwrap();
 
         print!("{}", buffer);
         stdout.flush()?;
 
         thread::sleep(Duration::from_millis(2000));
     }
-}
-
-fn push_bar(buffer: &mut String, label: &str, percent: usize, color_code: &str) {
-    let width = 40;
-    let percent = if percent > 100 { 100 } else { percent };
-    
-    let filled = (percent * width) / 100;
-    let empty = width - filled;
-
-    let filled_str = "#".repeat(filled);
-    let empty_str = ".".repeat(empty);
-
-    use std::fmt::Write;
-    writeln!(buffer, "{:<7}: [ {}{}{}{} ] {:>3}%", 
-        label, 
-        color_code, 
-        filled_str, 
-        "\x1B[0m", 
-        empty_str, 
-        percent
-    ).unwrap();
-}
-
-fn run_wmic(args: &[&str]) -> io::Result<String> {
-    let output = Command::new("wmic")
-        .args(args)
-        .output()?;
-    Ok(String::from_utf8_lossy(&output.stdout).replace("\0", ""))
-}
-
-fn get_disks() -> io::Result<Vec<DiskInfo>> {
-    let output = Command::new("wmic")
-        .args(&["logicaldisk", "get", "DeviceID,FreeSpace,Size", "/Format:CSV"])
-        .output()?;
-        
-    let s = String::from_utf8_lossy(&output.stdout).replace("\0", "");
-    let mut disks = Vec::new();
-    
-    for line in s.lines() {
-        if line.trim().is_empty() { continue; }
-        
-        let parts: Vec<&str> = line.split(',').collect();
-        
-        if parts.len() >= 4 && parts[1] != "DeviceID" {
-            let name = parts[1].trim().to_string();
-            let free_str = parts[2].trim();
-            let size_str = parts[3].trim();
-
-            if size_str.is_empty() || free_str.is_empty() {
-                continue;
-            }
-
-            let free: f64 = free_str.parse().unwrap_or(0.0);
-            let size: f64 = size_str.parse().unwrap_or(0.0);
-
-            if size > 0.0 {
-                let percent = ((size - free) / size * 100.0) as u64;
-                disks.push(DiskInfo {
-                    name,
-                    total_gb: size / 1_073_741_824.0,
-                    free_gb: free / 1_073_741_824.0,
-                    percent,
-                });
-            }
-        }
-    }
-    
-    Ok(disks)
-}
-
-fn get_cpu_load() -> io::Result<u64> {
-    let s = run_wmic(&["cpu", "get", "loadpercentage", "/Value"])?;
-    for line in s.lines() {
-        if line.trim().starts_with("LoadPercentage=") {
-            if let Some(val) = line.trim().split('=').nth(1) {
-                return Ok(val.parse().unwrap_or(0));
-            }
-        }
-    }
-    Ok(0)
-}
-
-fn get_memory_usage() -> io::Result<(f64, f64, u64)> {
-    let s = run_wmic(&["OS", "get", "FreePhysicalMemory,TotalVisibleMemorySize", "/Value"])?;
-    
-    let mut total_kb = 0.0;
-    let mut free_kb = 0.0;
-
-    for line in s.lines() {
-        let line = line.trim();
-        if line.starts_with("TotalVisibleMemorySize=") {
-             total_kb = line.split('=').nth(1).unwrap_or("0").parse().unwrap_or(0.0);
-        } else if line.starts_with("FreePhysicalMemory=") {
-             free_kb = line.split('=').nth(1).unwrap_or("0").parse().unwrap_or(0.0);
-        }
-    }
-
-    if total_kb == 0.0 { return Ok((0.0, 0.0, 0)); }
-    
-    let used_kb = total_kb - free_kb;
-    let percent = (used_kb / total_kb * 100.0) as u64;
-    Ok((used_kb / 1048576.0, total_kb / 1048576.0, percent))
-}
-
-fn get_process_count() -> io::Result<usize> {
-    let output = Command::new("tasklist").output()?;
-    let s = String::from_utf8_lossy(&output.stdout);
-    let count = s.lines().count();
-    Ok(if count > 3 { count - 3 } else { 0 })
-}
-
-fn get_system_info() -> SystemInfo {
-    let mut info = SystemInfo { 
-        os_name: "Unknown".to_string(), 
-        host_name: "Unknown".to_string() 
-    };
-    
-    if let Ok(s) = run_wmic(&["os", "get", "Caption,CSName", "/Value"]) {
-        for line in s.lines() {
-            let line = line.trim();
-            if line.starts_with("Caption=") {
-                info.os_name = line.split('=').nth(1).unwrap_or("").to_string();
-            } else if line.starts_with("CSName=") {
-                info.host_name = line.split('=').nth(1).unwrap_or("").to_string();
-            }
-        }
-    }
-    info
 }
