@@ -26,16 +26,11 @@ fn format_uptime(seconds: u64) -> String {
 }
 
 fn main() -> io::Result<()> {
-    // \x1B[?1049h - Enable alternative screen buffer
-    // \x1B[?25l   - Hide cursor
-    // \x1B[2J     - Clear screen
     print!("\x1B[?1049h\x1B[?25l\x1B[2J");
     let mut stdout = io::stdout();
 
     let sys_info = get_system_info();
 
-    // We catch the loop to ensure we can restore the terminal if possible, 
-    // though Ctrl+C will still need a proper signal handler for a perfect cleanup.
     loop {
         let cpu_res = get_cpu_load();
         let mem_res = get_memory_usage();
@@ -45,8 +40,6 @@ fn main() -> io::Result<()> {
 
         let mut buffer = String::new();
         
-        // \x1B[H   - Move cursor to 1,1
-        // \x1B[2J  - Clear entire screen from current position
         buffer.push_str("\x1B[H");
         
         let header_title = "RUST TOP DASHBOARD";

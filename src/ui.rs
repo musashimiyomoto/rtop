@@ -14,7 +14,6 @@ pub fn push_bar(buffer: &mut String, label: &str, percent: usize, _default_color
     let width = 40;
     let percent = if percent > 100 { 100 } else { percent };
     
-    // Dynamic color based on load
     let color_code = if percent < 50 {
         C_GREEN
     } else if percent < 80 {

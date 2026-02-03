@@ -66,7 +66,7 @@ fn run_wmic(args: &[&str]) -> io::Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).replace("\0", ""))
 }
 
-// --- Parsing Functions (Private / Internal) ---
+
 
 fn parse_cpu_load(output: &str) -> u64 {
     for line in output.lines() {
@@ -143,7 +143,6 @@ mod tests {
 
     #[test]
     fn test_parse_memory_usage() {
-        // Total: 16GB (16777216 KB), Free: 8GB (8388608 KB) => 50% usage
         let input = "FreePhysicalMemory=8388608\r\nTotalVisibleMemorySize=16777216\r\n";
         let (used, total, percent) = parse_memory_usage(input);
         
