@@ -8,7 +8,7 @@ A lightweight, terminal-based system monitoring tool written in Rust. It display
 - **Memory Usage**: Displays used and total RAM.
 - **Disk Usage**: Monitors free/used space for all logical drives (C:, D:, etc.).
 - **Process Count**: Shows total number of running processes.
-- **Cross-Platform**: Built generic where possible, but currently uses Windows-specific commands (`wmic`).
+- **Cross-Platform**: Full support for Windows, Linux, and macOS using `sysinfo`.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ A lightweight, terminal-based system monitoring tool written in Rust. It display
 
 ## Building and Running
 
-### Windows
+### All Platforms
 
 1.  **Clone the repository**:
     ```bash
@@ -32,24 +32,6 @@ A lightweight, terminal-based system monitoring tool written in Rust. It display
 3.  **Run**:
     ```bash
     cargo run --release
-    ```
-    Or run the executable directly from `target/release/rust_top.exe`.
-
-### Linux & macOS
-
-*Note: The current implementation heavily relies on Windows Management Instrumentation (WMIC). Linux and macOS support requires adapting the system calls.*
-
-1.  **Build**:
-    The code compiles on all platforms, as it uses standard Rust code.
-    ```bash
-    cargo build --release
-    ```
-
-2.  **Run**:
-    ```bash
-    cargo run --release
-    ```
-    *Warning: You may see errors or empty stats if `wmic` is not available on your system (which is tailored for Windows).*
 
 ## Development & Testing
 
