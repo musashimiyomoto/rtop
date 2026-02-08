@@ -52,7 +52,7 @@ fn main() -> io::Result<()> {
 
         let mut buffer = String::new();
         
-        buffer.push_str("\x1B[H");
+        buffer.push_str("\x1B[2J\x1B[H");
         
         let header_title = "RUST TOP DASHBOARD";
         let total_width = 70;
