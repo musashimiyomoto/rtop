@@ -1,5 +1,5 @@
+use crate::models::{ProcessInfo, SystemInfo};
 use sysinfo::System;
-use crate::models::{SystemInfo, ProcessInfo};
 
 pub fn get_system_info() -> SystemInfo {
     SystemInfo {
@@ -14,6 +14,12 @@ pub fn get_uptime() -> u64 {
 
 pub struct SysCollector {
     sys: System,
+}
+
+impl Default for SysCollector {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SysCollector {

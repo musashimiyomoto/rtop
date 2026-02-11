@@ -1,5 +1,5 @@
-use rtop::ui::{push_bar, format_uptime, render_dashboard};
-use rtop::models::ProcessInfo;
+use rtop::models::{DashboardData, ProcessInfo};
+use rtop::ui::{format_uptime, push_bar, render_dashboard};
 
 #[test]
 fn test_push_bar() {
@@ -27,11 +27,25 @@ fn test_format_uptime() {
 
 #[test]
 fn test_render_dashboard() {
-    let procs = vec![
-        ProcessInfo { pid: 1, name: "test".to_string(), cpu_usage: 10.0, memory_mb: 50.0 },
-    ];
+    let procs = vec![ProcessInfo {
+        pid: 1,
+        name: "test".to_string(),
+        cpu_usage: 10.0,
+        memory_mb: 50.0,
+    }];
+    let data = DashboardData {
+        host_name: "myhost",
+        os_name: "Linux",
+        proc_count: 42,
+        uptime: 3600,
+        cpu: 25,
+        mem_used: 2.0,
+        mem_total: 8.0,
+        mem_pct: 25,
+        top_procs: &procs,
+    };
     let mut buffer = String::new();
-    render_dashboard(&mut buffer, "myhost", "Linux", 42, 3600, 25, 2.0, 8.0, 25, &procs);
+    render_dashboard(&mut buffer, &data);
     assert!(buffer.contains("RUST TOP DASHBOARD"));
     assert!(buffer.contains("myhost"));
     assert!(buffer.contains("Linux"));

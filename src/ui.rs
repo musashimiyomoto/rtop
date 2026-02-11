@@ -41,59 +41,106 @@ pub fn push_bar(buffer: &mut String, label: &str, percent: usize, _default_color
     let filled_str = "█".repeat(filled);
     let empty_str = "░".repeat(empty);
 
-    writeln!(buffer, " {:<7}: [ {}{}{}{} ] {:>3}%",
-        label,
-        color_code,
-        filled_str,
-        C_RESET,
-        empty_str,
-        percent
-    ).unwrap();
+    writeln!(
+        buffer,
+        " {:<7}: [ {}{}{}{} ] {:>3}%",
+        label, color_code, filled_str, C_RESET, empty_str, percent
+    )
+    .unwrap();
 }
 
-pub fn render_dashboard(
-    buffer: &mut String,
-    host_name: &str,
-    os_name: &str,
-    proc_count: usize,
-    uptime: u64,
-    cpu: u64,
-    mem_used: f64,
-    mem_total: f64,
-    mem_pct: u64,
-    top_procs: &[crate::models::ProcessInfo],
-) {
+pub fn render_dashboard(buffer: &mut String, data: &crate::models::DashboardData) {
     let header_title = "RUST TOP DASHBOARD";
     let total_width = 70;
     let padding = (total_width - header_title.len()) / 2;
 
-    writeln!(buffer, "{}{}╔{}╗{}", C_BOLD, C_CYAN, "═".repeat(total_width + 2), C_RESET).unwrap();
-    writeln!(buffer, "{}{}║ {}{}{} ║{}", C_BOLD, C_CYAN, " ".repeat(padding), header_title, " ".repeat(total_width - header_title.len() - padding), C_RESET).unwrap();
-    writeln!(buffer, "{}{}╚{}╝{}", C_BOLD, C_CYAN, "═".repeat(total_width + 2), C_RESET).unwrap();
+    writeln!(
+        buffer,
+        "{}{}╔{}╗{}",
+        C_BOLD,
+        C_CYAN,
+        "═".repeat(total_width + 2),
+        C_RESET
+    )
+    .unwrap();
+    writeln!(
+        buffer,
+        "{}{}║ {}{}{} ║{}",
+        C_BOLD,
+        C_CYAN,
+        " ".repeat(padding),
+        header_title,
+        " ".repeat(total_width - header_title.len() - padding),
+        C_RESET
+    )
+    .unwrap();
+    writeln!(
+        buffer,
+        "{}{}╚{}╝{}",
+        C_BOLD,
+        C_CYAN,
+        "═".repeat(total_width + 2),
+        C_RESET
+    )
+    .unwrap();
 
-    writeln!(buffer, " Host: {}{:<15}{} | OS: {}{}{}",
-        C_GREEN, host_name, C_RESET,
-        C_GREEN, os_name, C_RESET
-    ).unwrap();
-    writeln!(buffer, " Proc: {}{:<15}{} | Up: {}{}{}",
-        C_YELLOW, proc_count, C_RESET,
-        C_GREEN, format_uptime(uptime), C_RESET
-    ).unwrap();
+    writeln!(
+        buffer,
+        " Host: {}{:<15}{} | OS: {}{}{}",
+        C_GREEN, data.host_name, C_RESET, C_GREEN, data.os_name, C_RESET
+    )
+    .unwrap();
+    writeln!(
+        buffer,
+        " Proc: {}{:<15}{} | Up: {}{}{}",
+        C_YELLOW,
+        data.proc_count,
+        C_RESET,
+        C_GREEN,
+        format_uptime(data.uptime),
+        C_RESET
+    )
+    .unwrap();
     writeln!(buffer, "{}", "━".repeat(total_width + 4)).unwrap();
 
-    push_bar(buffer, "CPU", cpu as usize, C_YELLOW);
+    push_bar(buffer, "CPU", data.cpu as usize, C_YELLOW);
 
-    push_bar(buffer, "MEM", mem_pct as usize, C_MAGENTA);
-    writeln!(buffer, "          {:.2} GB / {:.2} GB", mem_used, mem_total).unwrap();
+    push_bar(buffer, "MEM", data.mem_pct as usize, C_MAGENTA);
+    writeln!(
+        buffer,
+        "          {:.2} GB / {:.2} GB",
+        data.mem_used, data.mem_total
+    )
+    .unwrap();
 
     writeln!(buffer, "{}", "━".repeat(total_width + 4)).unwrap();
-    writeln!(buffer, " {}{}TOP PROCESSES (CPU){}{}", C_BOLD, C_RED, C_RESET, " ".repeat(total_width - 18)).unwrap();
-    writeln!(buffer, " {:<8} {:<25} {:<10} {:<10}", "PID", "NAME", "CPU %", "MEM (MB)").unwrap();
-    for proc in top_procs {
-        let name = if proc.name.len() > 25 { &proc.name[..25] } else { &proc.name };
-        writeln!(buffer, " {:<8} {:<25} {:<10.1} {:<10.1}",
+    writeln!(
+        buffer,
+        " {}{}TOP PROCESSES (CPU){}{}",
+        C_BOLD,
+        C_RED,
+        C_RESET,
+        " ".repeat(total_width - 18)
+    )
+    .unwrap();
+    writeln!(
+        buffer,
+        " {:<8} {:<25} {:<10} {:<10}",
+        "PID", "NAME", "CPU %", "MEM (MB)"
+    )
+    .unwrap();
+    for proc in data.top_procs {
+        let name = if proc.name.len() > 25 {
+            &proc.name[..25]
+        } else {
+            &proc.name
+        };
+        writeln!(
+            buffer,
+            " {:<8} {:<25} {:<10.1} {:<10.1}",
             proc.pid, name, proc.cpu_usage, proc.memory_mb
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     writeln!(buffer, "{}", "━".repeat(total_width + 4)).unwrap();
