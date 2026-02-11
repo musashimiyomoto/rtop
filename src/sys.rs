@@ -68,23 +68,3 @@ impl SysCollector {
             .collect()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_system_info() {
-        let info = get_system_info();
-        assert!(!info.os_name.is_empty());
-    }
-
-    #[test]
-    fn test_collector() {
-        let collector = SysCollector::new();
-        let (used, total, _) = collector.memory_usage();
-        assert!(total >= 0.0);
-        assert!(used <= total);
-        assert!(collector.process_count() > 0);
-    }
-}

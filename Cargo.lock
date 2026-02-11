@@ -87,7 +87,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust_top"
+name = "rtop"
 version = "0.1.0"
 dependencies = [
  "sysinfo",
