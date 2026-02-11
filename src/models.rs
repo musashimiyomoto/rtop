@@ -3,13 +3,6 @@ pub struct SystemInfo {
     pub host_name: String,
 }
 
-pub struct DiskInfo {
-    pub name: String,
-    pub total_gb: f64,
-    pub free_gb: f64,
-    pub percent: u64,
-}
-
 pub struct ProcessInfo {
     pub pid: u32,
     pub name: String,
@@ -17,8 +10,14 @@ pub struct ProcessInfo {
     pub memory_mb: f64,
 }
 
-pub struct NetworkInfo {
-    pub name: String,
-    pub tx_bytes: u64,
-    pub rx_bytes: u64,
+pub struct DashboardData<'a> {
+    pub host_name: &'a str,
+    pub os_name: &'a str,
+    pub proc_count: usize,
+    pub uptime: u64,
+    pub cpu: u64,
+    pub mem_used: f64,
+    pub mem_total: f64,
+    pub mem_pct: u64,
+    pub top_procs: &'a [ProcessInfo],
 }
